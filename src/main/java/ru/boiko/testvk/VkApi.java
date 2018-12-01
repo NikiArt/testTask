@@ -1,128 +1,104 @@
 package ru.boiko.testvk;
 
-import java.awt.*;
-import java.io.IOException;
-import java.net.URISyntaxException;
-import java.net.URL;
+import lombok.SneakyThrows;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
+import org.jetbrains.annotations.NotNull;
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.util.Iterator;
 
 public class VkApi {
+    private static String APPLICATION_ID = "";
+    private static String SECRET_ID = "";
+    private static String APP_TOKEN = "5335221d5335221d5335221ddc535265d9553355335221d0f373febfb5b04c63e9df51a";
+
+    private String authToken;
 
 
-    private static final String AUTH_URL = "https://oauth.vk.com/authorize?client_id={APP_ID}&scope={PERMISSIONS}&redirect_uri={REDIRECT_URI}&display={DISPLAY}&v={API_VERSION}&response_type=token";
-    private static final String API_REQUEST = "https://api.vk.com/method/{METHOD}?{PARAMS}&access_token={TOKEN}&v=5.21";
 
+    public void getFriendsById(@NotNull final String id) {
+        String uri = "https://api.vk.com/method/friends.get?user_id=" + id + "&fields=bdate&access_token=" + APP_TOKEN + "&v=5.92";
+        String data = makeRequest(uri);
+        JSONObject jsonObject = new JSONObject(data);
+        if (jsonObject.has("error")) {
+            JSONObject responseObject = (JSONObject) jsonObject.get("error");
+            System.out.println(responseObject.getString("error_msg"));
+            return;
+        }
+        if (jsonObject.has("response")) {
+            JSONObject responseObject = (JSONObject) jsonObject.get("response");
+            JSONArray jsonArray = responseObject.getJSONArray("items");
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject jsonObject1 = jsonArray.getJSONObject(i);
 
-    private void auth(String appId) throws IOException {
-        String reqUrl = AUTH_URL
-                .replace("{APP_ID}", appId)
-                .replace("{PERMISSIONS}", "photos,messages")
-                .replace("{REDIRECT_URI}", "https://oauth.vk.com/blank.html")
-                .replace("{DISPLAY}", "page")
-                .replace("{API_VERSION}", "5.21");
+                Iterator<?> keys = jsonObject1.keys();
+                while (keys.hasNext()) {
+                    String key = (String) keys.next();
+                    if (jsonObject1.get(key) instanceof String) {
+                        String val = jsonObject1.getString(key);
+                        System.out.println(val);
+                    }
+                }
+            }
+        }
+    }
+
+    @SneakyThrows
+    public void getUserInfoById(@NotNull final String id) {
+        String uri = "https://api.vk.com/method/users.get?user_id=" + id + "&fields=bdate&access_token=" + APP_TOKEN + "&v=5.92";
+        String data = makeRequest(uri);
+        JSONObject jsonObject = new JSONObject(data);
+        if (jsonObject.has("error")) {
+            JSONObject responseObject = (JSONObject) jsonObject.get("error");
+            System.out.println(responseObject.getString("error_msg"));
+            return;
+        }
+        if (jsonObject.has("response")) {
+            JSONArray jsonArray = jsonObject.getJSONArray("response");
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject jsonObject1 = jsonArray.getJSONObject(i);
+
+                Iterator<?> keys = jsonObject1.keys();
+                while (keys.hasNext()) {
+                    String key = (String) keys.next();
+                    if (jsonObject1.get(key) instanceof String) {
+                        String val = jsonObject1.getString(key);
+                        System.out.println(val);
+                    }
+                }
+            }
+        }
+
+    }
+
+    @SneakyThrows
+    private void getAuthToken() {
+        String uri = "https://oauth.vk.com/access_token?client_id=" + APPLICATION_ID + "&client_secret=" + SECRET_ID + "&v=5.92&grant_type=client_credentials";
+        String data = makeRequest(uri);
+        JSONObject jsonObject = new JSONObject(data);
         try {
-            Desktop.getDesktop().browse(new URL(reqUrl).toURI());
-        } catch (URISyntaxException ex) {
-            throw new IOException(ex);
-        }
-
-    }
-   /* public static VkApi with(String appId, String accessToken) throws IOException {
-        return new VkApi(appId, accessToken);
-    }
-
-
-    private final String accessToken;
-
-    private VkApi(String appId, String accessToken) throws IOException {
-        this.accessToken = accessToken;
-        if (accessToken == null || accessToken.isEmpty()) {
-            auth(appId);
-            throw new Error("Need access token");
+            authToken = jsonObject.getString("access_token");
+            System.out.println(authToken);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
-    private void auth(String appId) throws IOException {
-        String reqUrl = AUTH_URL
-                .replace("{APP_ID}", appId)
-                .replace("{PERMISSIONS}", "photos,messages")
-                .replace("{REDIRECT_URI}", "https://oauth.vk.com/blank.html")
-                .replace("{DISPLAY}", "page")
-                .replace("{API_VERSION}", "5.21");
-        try {
-            Desktop.getDesktop().browse(new URL(reqUrl).toURI());
-        } catch (URISyntaxException ex) {
-            throw new IOException(ex);
-        }
+    @SneakyThrows
+    private String makeRequest(String uri) {
+        HttpClient httpClient = HttpClients.createDefault();
+        HttpPost httpPost = new HttpPost(uri);
 
+        HttpResponse response = httpClient.execute(httpPost);
+        HttpEntity entity = response.getEntity();
+        String data = EntityUtils.toString(entity);
+        return data;
     }
 
-
-    public String getDialogs() throws IOException {
-        return invokeApi("messages.getDialogs", null);
-    }
-
-
-    public String getHistory(String userId, int offset, int count, boolean rev) throws IOException {
-        return invokeApi("messages.getHistory", Params.create()
-                .add("user_id", userId)
-                .add("offset", String.valueOf(offset))
-                .add("count", String.valueOf(count))
-                .add("rev", rev ? "1" : "0"));
-
-    }
-
-
-    public String getAlbums(String userId) throws IOException {
-        return invokeApi("photos.getAlbums", Params.create()
-                .add("owner_id", userId)
-                .add("photo_sizes", "1")
-                .add("thumb_src", "1"));
-
-    }
-
-
-    private String invokeApi(String method, Params params) throws IOException {
-
-        final String parameters = (params == null) ? "" : params.build();
-        String reqUrl = API_REQUEST
-                .replace("{METHOD}", method)
-                .replace("{TOKEN}", accessToken)
-                .replace("{PARAMS}&", parameters);
-        final StringBuilder result = new StringBuilder();
-        final URL url = new URL(reqUrl);
-        try (InputStream is = url.openStream()) {
-            BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-            reader.lines().forEach(result::append);
-        }
-        return result.toString();
-    }
-
-    private static class Params {
-
-        public static Params create() {
-            return new Params();
-        }
-
-        private final HashMap<String, String> params;
-
-        private Params() {
-            params = new HashMap<>();
-        }
-
-
-        public Params add(String key, String value) {
-            params.put(key, value);
-            return this;
-        }
-
-
-        public String build() {
-            if (params.isEmpty()) return "";
-            final StringBuilder out = new StringBuilder();
-            params.keySet().stream().forEach(key -> {
-                out.append(key).append('=').append(params.get(key)).append('&');
-            });
-            return out.toString();
-        }
-    }*/
 }
