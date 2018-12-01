@@ -10,7 +10,7 @@ import org.apache.http.util.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import ru.boiko.testvk.database.DataBase;
+import ru.boiko.testvk.DataBase;
 
 import java.util.Iterator;
 

@@ -1,4 +1,4 @@
-package ru.boiko.testvk.database;
+package ru.boiko.testvk;
 
 import lombok.SneakyThrows;
 
