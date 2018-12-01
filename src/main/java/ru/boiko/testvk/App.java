@@ -1,5 +1,7 @@
 package ru.boiko.testvk;
 
+import ru.boiko.testvk.database.DataBase;
+
 /**
  * Hello world!
  *
@@ -7,8 +9,9 @@ package ru.boiko.testvk;
 public class App 
 {
     public static void main( String[] args ) {
-        VkApi vkApi = new VkApi();
-        vkApi.getUserInfoById("468849451");
-        vkApi.getFriendsById("468849451");
+        DataBase dataBase = new DataBase();
+        VkApi vkApi = new VkApi(dataBase);
+        //vkApi.getUserInfoById("468849451");
+        vkApi.getFriendsById(481912255);
     }
 }
