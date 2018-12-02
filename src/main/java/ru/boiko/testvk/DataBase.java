@@ -158,6 +158,7 @@ public class DataBase {
             if(resultSet!=null) {    resultSet.close();  }
             if(connection!=null) {   connection.close(); }
         }
+        System.out.println(friends.size());
         return friends;
     }
 
@@ -178,6 +179,7 @@ public class DataBase {
         }finally {
             if(connection!=null) {   connection.close(); }
         }
+        System.out.println(friends.size());
         return friends;
     }
 
@@ -206,12 +208,11 @@ public class DataBase {
         connection = DriverManager.getConnection(SQL + NAME_DB + "?user=" + LOGIN_DB + "&password=" + PASSWORD_DB);
         statement = connection.createStatement();
         final String requestValues = usersid.toString().replace("[","(").replace("]", ")");
-        final String sql = "SELECT friend, user, COUNT(*) c FROM friends WHERE user in " + requestValues + " GROUP BY friend HAVING c > 1";
+        final String sql = "SELECT friend, COUNT(*) c FROM friends WHERE user in " + requestValues + " GROUP BY friend HAVING c > 1";
         final ResultSet resultSet = statement.executeQuery(sql);
         int i = 1;
         while ( resultSet != null && resultSet.next() ) {
             if (resultSet.getInt(2) > 1) {
-                System.out.println(i + " - " + resultSet.getString(1) + " - " + resultSet.getString(2));
                 friends.add(resultSet.getInt(1));
                 i++;
             }
@@ -221,6 +222,7 @@ public class DataBase {
             if(resultSet!=null) {    resultSet.close();  }
             if(connection!=null) {   connection.close(); }
         }
+        System.out.println(friends.size());
         return friends;
     }
 
@@ -242,7 +244,7 @@ public class DataBase {
             connection = DriverManager.getConnection(SQL + NAME_DB + "?user=" + LOGIN_DB + "&password=" + PASSWORD_DB);
             statement = connection.createStatement();
             final String requestValuesUser = usersid.toString().replace("[","(").replace("]", ")");
-            final String requestValuesFriend = " AND friend in " + ((friendsid != null) ? usersid.toString().replace("[","(").replace("]", ")") : "");
+            final String requestValuesFriend = " AND friend in " + ((friendsid != null) ? friendsid.toString().replace("[","(").replace("]", ")") : "");
             final String sql = "SELECT * FROM friends WHERE user in " + requestValuesUser + requestValuesFriend;
             final ResultSet resultSet = statement.executeQuery(sql);
             while ( resultSet != null && resultSet.next() ) {
