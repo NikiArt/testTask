@@ -13,6 +13,7 @@ import org.json.JSONObject;
 import ru.boiko.testvk.DataBase;
 
 import java.util.Iterator;
+import java.util.List;
 
 public class VkApi {
     private static String APPLICATION_ID = "";
@@ -23,7 +24,7 @@ public class VkApi {
 
     final DataBase dataBase;
 
-    public VkApi(DataBase dataBase) {
+    public VkApi(final DataBase dataBase) {
         this.dataBase = dataBase;
     }
 
@@ -45,14 +46,6 @@ public class VkApi {
                 final JSONObject currentValue = jsonArray.getJSONObject(i);
                 dataBase.addUser(currentValue.getInt("id"),currentValue.getString("first_name"),currentValue.getString("last_name"));
                 dataBase.addFriend(id, currentValue.getInt("id"));
-                /*Iterator<?> keys = currentValue.keys();
-                while (keys.hasNext()) {
-                    String key = (String) keys.next();
-                    if (currentValue.get(key) instanceof String) {
-                        String val = currentValue.getString(key);
-                        System.out.println(val);
-                    }
-                }*/
             }
         }
     }
@@ -112,5 +105,4 @@ public class VkApi {
         final String data = EntityUtils.toString(entity);
         return data;
     }
-
 }

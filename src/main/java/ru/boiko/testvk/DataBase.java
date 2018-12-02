@@ -1,8 +1,12 @@
 package ru.boiko.testvk;
 
 import lombok.SneakyThrows;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class DataBase {
@@ -15,7 +19,10 @@ public class DataBase {
     private ResultSet resultSet;
     private Statement statement;
 
-    public DataBase() {
+    final ExcelExport excelExport;
+
+    public DataBase(final ExcelExport excelExport) {
+        this.excelExport = excelExport;
         checkDbExist();
     }
 
@@ -27,7 +34,7 @@ public class DataBase {
             resultSet = connection.getMetaData().getCatalogs();
 
             while (resultSet.next()) {
-                String databaseName = resultSet.getString(1);
+                final String databaseName = resultSet.getString(1);
                 if (databaseName.equals(NAME_DB)) {
                     baseExist = true;
                     break;
@@ -86,10 +93,10 @@ public class DataBase {
     }
 
     @SneakyThrows
-    public void addUser(Integer id, String firstName, String lastName) {
+    public void addUser(@NotNull final Integer id, final String firstName, final String lastName) {
         try {
             connection = DriverManager.getConnection(SQL + NAME_DB + "?user=" + LOGIN_DB + "&password=" + PASSWORD_DB);
-            PreparedStatement statement = connection.prepareStatement("select 1 from `users` where `id` = ?");
+            PreparedStatement statement = connection.prepareStatement("SELECT 1 FROM `users` WHERE `id` = ?");
             statement.setInt(1, id);
             try (ResultSet rs = statement.executeQuery()) {
                 if (rs.next()) {
@@ -108,11 +115,11 @@ public class DataBase {
     }
 
     @SneakyThrows
-    public void addFriend(Integer userId, Integer friendId) {
-        String uuid = UUID.randomUUID().toString();
+    public void addFriend(@NotNull final Integer userId, @NotNull final Integer friendId) {
+        final String uuid = UUID.randomUUID().toString();
         try {
             connection = DriverManager.getConnection(SQL + NAME_DB + "?user=" + LOGIN_DB + "&password=" + PASSWORD_DB);
-            PreparedStatement statement = connection.prepareStatement("select 1 from `friends` where `user` = ? and `friend` = ?");
+            PreparedStatement statement = connection.prepareStatement("SELECT 1 FROM `friends` WHERE `user` = ? AND `friend` = ?");
             statement.setInt(1, userId);
             statement.setInt(2, friendId);
             try (ResultSet rs = statement.executeQuery()) {
@@ -127,6 +134,123 @@ public class DataBase {
             statement.setInt(3, friendId);
             statement.execute();
         }finally {
+            if(connection!=null) {   connection.close(); }
+        }
+    }
+
+    @SneakyThrows
+    public List<Integer> getFriends(@NotNull final List<Integer> usersid) {
+        final List<Integer> friends = new ArrayList<>();
+        try {
+            connection = DriverManager.getConnection(SQL + NAME_DB + "?user=" + LOGIN_DB + "&password=" + PASSWORD_DB);
+            statement = connection.createStatement();
+            String sql = "SELECT friend FROM friends WHERE user IN (";
+            for (int i = 0; i < usersid.size(); i++) {
+                sql += usersid.get(i) + ((i == (usersid.size() - 1)) ? ")" : ", ");
+            }
+            final ResultSet resultSet = statement.executeQuery(sql);
+            int i = 1;
+            while ( resultSet != null && resultSet.next() ) {
+                friends.add(resultSet.getInt(1));
+            }
+        }finally {
+            if(statement!=null) {    statement.close();  }
+            if(resultSet!=null) {    resultSet.close();  }
+            if(connection!=null) {   connection.close(); }
+        }
+        return friends;
+    }
+
+    @SneakyThrows
+    public List<Integer> getClosestFriends(@NotNull final List<Integer> usersid) {
+        final List<Integer> friends = new ArrayList<>();
+        try {
+            connection = DriverManager.getConnection(SQL + NAME_DB + "?user=" + LOGIN_DB + "&password=" + PASSWORD_DB);
+            statement = connection.createStatement();
+            final String requestValues = usersid.toString().replace("[","(").replace("]", ")");
+            final String sql = "SELECT * FROM friends WHERE friend IN " + requestValues + " AND user IN " + requestValues;
+            System.out.println(sql);
+            final ResultSet resultSet = statement.executeQuery(sql);
+            while ( resultSet != null && resultSet.next() ){
+                System.out.println(resultSet.getString(2) + " " + resultSet.getString(3));
+                friends.add(resultSet.getInt(3));
+            }
+        }finally {
+            if(connection!=null) {   connection.close(); }
+        }
+        return friends;
+    }
+
+    @SneakyThrows
+    public List<Integer> getUserList() {
+        final List<Integer> usersid = new ArrayList<>();
+        try {
+            connection = DriverManager.getConnection(SQL + NAME_DB + "?user=" + LOGIN_DB + "&password=" + PASSWORD_DB);
+            statement = connection.createStatement();
+            final String sql = "SELECT id FROM users";
+            final ResultSet resultSet = statement.executeQuery(sql);
+            while ( resultSet != null && resultSet.next() ){
+                usersid.add(resultSet.getInt(1));
+            }
+        }finally {
+            if(connection!=null) {   connection.close(); }
+        }
+
+        return usersid;
+    }
+
+    @SneakyThrows
+    public List<Integer> getNearestFriends(@NotNull final List<Integer> usersid) {
+        final List<Integer> friends = new ArrayList<>();
+        try {
+        connection = DriverManager.getConnection(SQL + NAME_DB + "?user=" + LOGIN_DB + "&password=" + PASSWORD_DB);
+        statement = connection.createStatement();
+        final String requestValues = usersid.toString().replace("[","(").replace("]", ")");
+        final String sql = "SELECT friend, user, COUNT(*) c FROM friends WHERE user in " + requestValues + " GROUP BY friend HAVING c > 1";
+        final ResultSet resultSet = statement.executeQuery(sql);
+        int i = 1;
+        while ( resultSet != null && resultSet.next() ) {
+            if (resultSet.getInt(2) > 1) {
+                System.out.println(i + " - " + resultSet.getString(1) + " - " + resultSet.getString(2));
+                friends.add(resultSet.getInt(1));
+                i++;
+            }
+        }
+        }finally {
+            if(statement!=null) {    statement.close();  }
+            if(resultSet!=null) {    resultSet.close();  }
+            if(connection!=null) {   connection.close(); }
+        }
+        return friends;
+    }
+
+    @SneakyThrows
+    public Boolean isEmpty() {
+        Boolean isEmpty = true;
+        connection = DriverManager.getConnection(SQL + NAME_DB + "?user=" + LOGIN_DB + "&password=" + PASSWORD_DB);
+        statement = connection.createStatement();
+        final String sql = "SELECT COUNT(id) FROM users";
+        final ResultSet resultSet = statement.executeQuery(sql);
+        resultSet.next();
+        if (resultSet.getInt(1) > 0) isEmpty = false;
+        return isEmpty;
+    }
+
+    @SneakyThrows
+    public void writeFile(@NotNull final List<Integer> usersid, @Nullable final List<Integer> friendsid) {
+        try {
+            connection = DriverManager.getConnection(SQL + NAME_DB + "?user=" + LOGIN_DB + "&password=" + PASSWORD_DB);
+            statement = connection.createStatement();
+            final String requestValuesUser = usersid.toString().replace("[","(").replace("]", ")");
+            final String requestValuesFriend = " AND friend in " + ((friendsid != null) ? usersid.toString().replace("[","(").replace("]", ")") : "");
+            final String sql = "SELECT * FROM friends WHERE user in " + requestValuesUser + requestValuesFriend;
+            final ResultSet resultSet = statement.executeQuery(sql);
+            while ( resultSet != null && resultSet.next() ) {
+                excelExport.writeString(resultSet.getString(2) + "," + resultSet.getString(3));
+            }
+        }finally {
+            if(statement!=null) {    statement.close();  }
+            if(resultSet!=null) {    resultSet.close();  }
             if(connection!=null) {   connection.close(); }
         }
     }
